@@ -16,3 +16,4 @@ export {
   type WeiboInfo,
   searchForUserUID
 }
+

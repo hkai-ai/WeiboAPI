@@ -149,30 +149,33 @@ export const fetchUserLatestWeiboByUIDWithoutParsed = (uid: string) => Effect.ru
  * @param uid 
  * @returns 
  */
-export const fetchUserLatestWeiboByUIDEnsureFullTexted = (uid: string) => Effect.runPromise(
-    Effect.gen(function* () {
-        const weiboInfos = yield* fetchUserLatestWeiboByUIDEffect(uid)
+export const fetchUserLatestWeiboByUIDEnsureFullTexted = (uid: string) => 
+    Effect.runPromise(
+        Effect.gen(function* () {
+            const weiboInfos = yield* fetchUserLatestWeiboByUIDEffect(uid)
 
-        /**
-         * 因为是引用传递，因此能够正确修改 weiboInfos 中的博文内容
-         */
-        for (const signleWeiboInfo of weiboInfos) {
-            const blogId = signleWeiboInfo.weiboId
-            const fullContent = yield* fetchBlogFullContentEffect(blogId)
-            if (fullContent === null) {
-                return yield* Effect.fail(new Error('获取博文全文失败'))
-            }
-            signleWeiboInfo.text = fullContent.thePostText
-            if (fullContent.theRetweetedText !== undefined) {
-                 if ('retweetedWeibo' in signleWeiboInfo && signleWeiboInfo.retweetedWeibo) {
-                    signleWeiboInfo.retweetedWeibo.text = fullContent.theRetweetedText
-                }
-            }
-        }
+            const updatedWeibos = yield* Effect.all(
+                weiboInfos.map(signleWeiboInfo => 
+                    Effect.gen(function* () {
+                        const blogId = signleWeiboInfo.weiboId
+                        const fullContent = yield* fetchBlogFullContentEffect(blogId)
+                        if (fullContent === null) {
+                            return yield* Effect.fail(new Error('获取博文全文失败'))
+                        }
+                        signleWeiboInfo.text = fullContent.thePostText
+                        if (fullContent.theRetweetedText !== undefined) {
+                            if ('retweetedWeibo' in signleWeiboInfo && signleWeiboInfo.retweetedWeibo) {
+                                signleWeiboInfo.retweetedWeibo.text = fullContent.theRetweetedText
+                            }
+                        }
+                        return signleWeiboInfo
+                    })
+                )
+            )
 
-        return weiboInfos
-    })
-)
+            return updatedWeibos
+        })
+    )
 
 // const d = await fetchUserLatestWeiboByUIDEnsureFullTexted('7797535872')
 
